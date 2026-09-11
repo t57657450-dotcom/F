@@ -1,0 +1,477 @@
+این فایل رابط سایت و فرم دو تیم است و درخواست شبیه‌سازی را به "/api/simulate" می‌فرستد.
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لیگ مجازی مربیان | شبیه‌ساز</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;
+background:#070707;
+color:#fff;
+font-family:Tahoma,Arial,sans-serif
+}
+.container{
+width:min(1000px,94%);
+margin:auto;
+padding:20px 0 50px
+}
+header{
+background:#111;
+border:1px solid #292929;
+border-radius:20px;
+padding:22px;
+text-align:center;
+margin-bottom:18px
+}
+header h1{margin:0 0 8px}
+header p{color:#aaa;margin:0}
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:16px
+}
+.card,.resultBox{
+background:#111;
+border:1px solid #292929;
+border-radius:18px;
+padding:18px
+}
+h2{margin-top:0}
+label{
+display:block;
+color:#aaa;
+font-size:13px;
+margin:12px 0 6px
+}
+input,select,textarea{
+width:100%;
+background:#080808;
+border:1px solid #333;
+color:white;
+border-radius:11px;
+padding:13px;
+font-family:inherit;
+outline:none
+}
+textarea{
+height:230px;
+resize:vertical;
+line-height:1.8
+}
+button{
+width:100%;
+border:0;
+border-radius:12px;
+padding:15px;
+margin-top:15px;
+font-family:inherit;
+font-weight:bold;
+cursor:pointer
+}
+.simulate{
+background:white;
+color:#000;
+font-size:16px
+}
+.result{
+display:none;
+margin-top:18px
+}
+.score{
+text-align:center;
+padding:25px;
+background:#0b0b0b;
+border-radius:16px
+}
+.scoreTeams{font-size:19px;font-weight:bold}
+.scoreNumber{
+font-size:50px;
+font-weight:900;
+margin:10px 0
+}
+.stat{
+display:flex;
+justify-content:space-between;
+padding:12px 0;
+border-bottom:1px solid #252525
+}
+.event{
+background:#090909;
+border-radius:10px;
+padding:11px;
+margin:7px 0
+}
+.reset{
+background:#292929;
+color:white
+}
+.error{
+background:#210909;
+border:1px solid #591b1b;
+padding:13px;
+border-radius:11px;
+color:#ff8b8b
+}
+.muted{color:#999}
+@media(max-width:700px){
+.grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+<h1>⚽ لیگ مجازی مربیان</h1>
+<p>شبیه‌سازی مسابقه بر اساس آمار بازیکنان و تاکتیک</p>
+</header>
+
+<div class="grid">
+
+<div class="card">
+
+<h2>🔴 تیم اول</h2>
+
+<label>نام تیم</label>
+<input id="team1" placeholder="مثلاً رئال مادرید">
+
+<label>تاکتیک</label>
+<select id="tactic1">
+<option value="balanced">⚖️ متعادل</option>
+<option value="attacking">⚔️ هجومی</option>
+<option value="defensive">🛡️ دفاعی</option>
+<option value="counter">⚡ ضدحمله</option>
+<option value="pressing">🔥 پرس شدید</option>
+</select>
+
+<label>بازیکنان</label>
+<textarea id="players1"
+placeholder="هر بازیکن را در یک خط بنویس"></textarea>
+
+</div>
+
+<div class="card">
+
+<h2>⚪ تیم دوم</h2>
+
+<label>نام تیم</label>
+<input id="team2" placeholder="مثلاً بارسلونا">
+
+<label>تاکتیک</label>
+<select id="tactic2">
+<option value="balanced">⚖️ متعادل</option>
+<option value="attacking">⚔️ هجومی</option>
+<option value="defensive">🛡️ دفاعی</option>
+<option value="counter">⚡ ضدحمله</option>
+<option value="pressing">🔥 پرس شدید</option>
+</select>
+
+<label>بازیکنان</label>
+<textarea id="players2"
+placeholder="هر بازیکن را در یک خط بنویس"></textarea>
+
+</div>
+
+</div>
+
+<button class="simulate" onclick="simulate()">
+🎮 شبیه‌سازی مسابقه
+</button>
+
+<div id="result" class="result"></div>
+
+</div>
+
+<script>
+
+function getPlayers(id){
+return document.getElementById(id)
+.value
+.split("\n")
+.map(x=>x.trim())
+.filter(Boolean);
+}
+
+async function simulate(){
+
+const team1=
+document.getElementById("team1").value.trim();
+
+const team2=
+document.getElementById("team2").value.trim();
+
+const tactic1=
+document.getElementById("tactic1").value;
+
+const tactic2=
+document.getElementById("tactic2").value;
+
+const players1=getPlayers("players1");
+const players2=getPlayers("players2");
+
+const result=
+document.getElementById("result");
+
+if(!team1||!team2){
+showError("نام هر دو تیم را وارد کن.");
+return;
+}
+
+if(!players1.length||!players2.length){
+showError("بازیکنان هر دو تیم را وارد کن.");
+return;
+}
+
+result.style.display="block";
+result.innerHTML=
+"<div class='resultBox'>⏳ در حال دریافت آمار بازیکنان و شبیه‌سازی...</div>";
+
+try{
+
+const response=await fetch("/api/simulate",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+team1,
+team2,
+tactic1,
+tactic2,
+players1,
+players2
+
+})
+
+});
+
+const data=await response.json();
+
+if(!response.ok){
+throw new Error(data.error||"خطای سرور");
+}
+
+render(data);
+
+}catch(error){
+
+showError(error.message);
+
+}
+
+}
+
+function render(data){
+
+const result=
+document.getElementById("result");
+
+let html=`
+
+<div class="resultBox">
+
+<div class="score">
+
+<div class="scoreTeams">
+🔴 ${esc(data.team1)}
+&nbsp; VS &nbsp;
+${esc(data.team2)} ⚪
+</div>
+
+<div class="scoreNumber">
+${data.score1} - ${data.score2}
+</div>
+
+<div class="muted">نتیجه نهایی</div>
+
+</div>
+
+<h3>📊 آمار مسابقه</h3>
+
+<div class="stat">
+<span>📊 مالکیت</span>
+<b>${data.possession1}% - ${data.possession2}%</b>
+</div>
+
+<div class="stat">
+<span>🎯 شوت</span>
+<b>${data.shots1} - ${data.shots2}</b>
+</div>
+
+<div class="stat">
+<span>🎯 شوت در چارچوب</span>
+<b>${data.onTarget1} - ${data.onTarget2}</b>
+</div>
+
+<div class="stat">
+<span>❌ خطا</span>
+<b>${data.fouls1} - ${data.fouls2}</b>
+</div>
+
+<div class="stat">
+<span>🎯 کاشته</span>
+<b>${data.freeKicks1} - ${data.freeKicks2}</b>
+</div>
+
+<div class="stat">
+<span>🚩 کرنر</span>
+<b>${data.corners1} - ${data.corners2}</b>
+</div>
+
+<h3>⚽ گل‌ها</h3>
+`;
+
+if(!data.goals.length){
+
+html+=`
+<div class="event muted">
+هیچ گلی به ثمر نرسید.
+</div>`;
+
+}else{
+
+data.goals.forEach(g=>{
+
+html+=`
+<div class="event">
+⚽ دقیقه ${g.minute}
+— ${esc(g.player)}
+<br>
+<span class="muted">${esc(g.team)}</span>
+</div>`;
+
+});
+
+}
+
+html+=`<h3>🟨 کارت زرد</h3>`;
+
+if(!data.yellow.length){
+
+html+=`
+<div class="event muted">
+کارت زردی ثبت نشد.
+</div>`;
+
+}else{
+
+data.yellow.forEach(c=>{
+
+html+=`
+<div class="event">
+🟨 دقیقه ${c.minute}
+— ${esc(c.player)}
+<br>
+<span class="muted">${esc(c.team)}</span>
+</div>`;
+
+});
+
+}
+
+html+=`<h3>🟥 کارت قرمز</h3>`;
+
+if(!data.red.length){
+
+html+=`
+<div class="event muted">
+کارت قرمزی ثبت نشد.
+</div>`;
+
+}else{
+
+data.red.forEach(c=>{
+
+html+=`
+<div class="event">
+🟥 دقیقه ${c.minute}
+— ${esc(c.player)}
+<br>
+<span class="muted">${esc(c.team)}</span>
+</div>`;
+
+});
+
+}
+
+html+=`
+
+<h3>⭐ بهترین بازیکن</h3>
+
+<div class="event">
+🏅 ${esc(data.bestPlayer)}
+<br>
+⭐ امتیاز عملکرد: ${data.bestRating}
+</div>
+
+<h3>🧠 قدرت محاسبه‌شده</h3>
+
+<div class="stat">
+<span>${esc(data.team1)}</span>
+<b>${data.power1}</b>
+</div>
+
+<div class="stat">
+<span>${esc(data.team2)}</span>
+<b>${data.power2}</b>
+</div>
+
+<button class="reset" onclick="resetSite()">
+🔄 مسابقه جدید
+</button>
+
+</div>
+`;
+
+result.innerHTML=html;
+
+result.scrollIntoView({
+behavior:"smooth"
+});
+
+}
+
+function showError(message){
+
+const result=
+document.getElementById("result");
+
+result.style.display="block";
+
+result.innerHTML=
+`<div class="error">⚠️ ${esc(message)}</div>`;
+
+}
+
+function resetSite(){
+
+location.reload();
+
+}
+
+function esc(value){
+
+return String(value)
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+</script>
+
+</body>
+  </html>
